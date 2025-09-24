@@ -12,12 +12,11 @@ services:
             - ./.env:/app/.env
             - ./uploads:/app/uploads
             - ./app/alembic/versions:/app/alembic/versions
-        expose:
-            - "8000"
         depends_on:
             - db
         networks:
             - memento_net
+            - db_net
 
     nginx:
         image: nginx:latest
@@ -54,45 +53,31 @@ services:
         volumes:
             - fastapi-app_pgdata:/var/lib/postgresql/data
         networks:
-            - memento_net
+            - db_net
 
-    # dialogue:
-    #   build:
-    #     context: ./dialogue
-    #   container_name: dialogue
-    #   expose:
-    #     - "6060"
-    #   env_file:
-    #     - ./dialogue/.env
-    #   networks:
-    #     - memento_net
-    #   depends_on:
-    #     db:
-    #       condition: service_healthy
+    fish-speech:
+      build:
+        context: ./fish-speech
+        dockerfile: Dockerfile
+      container_name: fish-speech
+      expose:
+        - "5000"
+      volumes:
+        - ./fish-speech/checkpoints:/app/checkpoints
+        - ./shared/input_wav:/app/input_wav
+        - ./shared/output_wav:/app/output_wav
+        - ./shared/model_output:/app/model_output
+      runtime: nvidia
+      environment:
+        - NVIDIA_VISIBLE_DEVICES=all
+      networks:
+        - db_net
+      depends_on:
+        db:
+          condition: service_healthy
 
-    # fish-speech:
-    #   build:
-    #     context: ./fish-speech
-    #     dockerfile: Dockerfile
-    #   container_name: fish-speech
-    #   expose:
-    #     - "5000"
-    #   volumes:
-    #     - ./fish-speech/checkpoints:/app/checkpoints
-    #     - ./shared/input_wav:/app/input_wav
-    #     - ./shared/output_wav:/app/output_wav
-    #     - ./shared/model_output:/app/model_output
-    #   runtime: nvidia
-    #   environment:
-    #     - NVIDIA_VISIBLE_DEVICES=all
-    #   networks:
-    #     - memento_net
-    #   depends_on:
-    #     db:
-    #       condition: service_healthy
-
-volumes:
-    fastapi-app_pgdata:
-
-networks:
-    memento_net:
+networks: 
+  memento_net:
+    driver: bridge
+  db_net:
+    driver: bridge
